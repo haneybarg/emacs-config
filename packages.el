@@ -12,10 +12,113 @@
   (package-refresh-contents))
 
 
+;; Features ------------------------------------------------------------------------------
+(if (boundp 'package-features)
+    (mapc (lambda (feature) (set feature t))
+          package-features))
+
+(defmacro package-feature (feat &rest code)
+  `(when (boundp ,feat)
+         ,(cons 'progn code)))
+
+
 ;; Use-package ---------------------------------------------------------------------------
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
   (package-install 'use-package))
+
+
+;; Emacs ---------------------------------------------------------------------------------
+(use-package emacs
+  :ensure nil
+  :bind (("C-;"   . comment-line)
+         ("M-SPC" . cycle-spacing)
+         ("C-."   . pop-tag-mark)
+
+         ("C-x k" . kill-this-buffer))
+  :config
+  (setq-default make-backup-files nil
+                truncate-lines t ;; disable word-wrap.
+                require-final-newline t
+
+                ;; Indentation
+                tab-width 2
+                tab-always-indent nil
+                indent-tabs-mode  nil
+                tab-stop-list (number-sequence 0 200 2)
+                fill-column 90
+                comment-column 0)
+
+  ;; Fix prompt
+  (fset 'yes-or-no-p 'y-or-n-p)
+
+  ;; Enable functions
+  (put 'narrow-to-region 'disabled nil)
+  (put 'upcase-region    'disabled nil)
+  (put 'downcase-region  'disabled nil)
+
+  ;; File local variables
+  (put 'before-save-hook 'safe-local-variable (lambda (_) t))
+  (put 'after-save-hook  'safe-local-variable (lambda (_) t))
+
+  ;; Modes
+  (when window-system
+    (tool-bar-mode -1)
+    (scroll-bar-mode -1))
+  (menu-bar-mode -1)
+  (column-number-mode)
+  ;; (global-display-line-numbers-mode)
+
+  (delete-selection-mode)
+  (electric-pair-mode)
+  (show-paren-mode)
+  (global-auto-revert-mode t)
+  (desktop-save-mode t)
+  (recentf-mode t)
+  (eldoc-mode)
+  ;;(semantic-mode)
+
+  ;; Keys
+  (global-unset-key "") ;; ESC ESC ESC
+  (when (window-system) ;; GUI only keybindings:
+    ;; Remap C-i to yank:
+    (define-key input-decode-map [?\C-i] [C-i])
+    (global-set-key (kbd "<C-i>") 'yank) ; Angled brackets required due to decoding.
+    (define-key isearch-mode-map (kbd "<C-i>") 'isearch-yank-kill))
+
+  ;; Aliases
+  (defalias 'open 'browse-url-of-buffer)
+
+  ;; Registers
+  (set-register ?e '(file . "~/.emacs.d/init.el"))
+  (set-register ?E `(file . ,dotemacs-file))
+  (set-register ?p `(file . ,(concat dotemacs-dir "packages.el"))))
+
+
+;; Recentf -------------------------------------------------------------------------------
+(use-package recentf
+  :ensure nil
+  :config
+  (setq-default recentf-save-file       "~/.emacs.d/.cache/recent-files"
+                recentf-max-saved-items 50
+                recentf-max-menu-items  15))
+
+
+;; Windmove ------------------------------------------------------------------------------
+(use-package windmove
+  :ensure nil
+  :bind (("s-w" . windmove-up)
+         ("s-d" . windmove-right)
+         ("s-s" . windmove-down)
+         ("s-a" . windmove-left))
+  :config
+  (windmove-default-keybindings 'meta))
+
+
+;; Misc ----------------------------------------------------------------------------------
+(use-package misc
+  :defer t
+  :bind ("M-z" . zap-up-to-char))
 
 
 ;; Powerline -----------------------------------------------------------------------------
@@ -41,14 +144,20 @@
                                          "\\`\\*helm"
                                          "\\`\\*Echo Area"
                                          "\\`\\*Minibuf"
+                                         "\\`\\*Quail Completions\\*"
                                          "\\`\\*lsp-log\\*"
                                          "\\`\\*\\(\\w\\|-\\)+ls\\(::stderr\\)?\\*\\'"
                                          "\\`\\*cquery\\(::stderr\\)?\\*\\'"
                                          ;; "\\`\\*EGLOT"
                                          "\\`\\*Flymake"
                                          "\\`\\*Flycheck"
-                                         "\\`magit.*:"
-                                         "\\`\\*tramp"))
+                                         "\\`magit-.*:"
+                                         "\\`\\*tramp"
+                                         "\\`\\*emacs\\*"
+                                         "\\`\\*ein:jupyter-server\\*"
+                                         "\\`\\*ein:log-all\\*"
+                                         "\\`\\*ein:.*\\*\\[markdown\\]"
+                                         "\\`\\*ein:.*\\*\\[python\\]"))
   :bind
   (("M-x"     . helm-M-x)
    ("M-y"     . helm-show-kill-ring)
@@ -64,6 +173,22 @@
   :config
   (setq company-idle-delay 0.3)
   (global-company-mode))
+
+
+;; Re-builder ----------------------------------------------------------------------------
+(use-package re-builder
+  :config
+  (setq reb-re-syntax 'string))
+
+
+;; Rg ------------------------------------------------------------------------------------
+(use-package rg
+  :ensure t
+  :commands rg
+  :bind (:map rg-mode-map
+              ("n" . rg-next-file)
+              ("p" . rg-prev-file)))
+
 
 ;; Yasnippet -----------------------------------------------------------------------------
 (use-package yasnippet
@@ -86,54 +211,36 @@
 
 
 ;; Lsp -----------------------------------------------------------------------------------
-;; (use-package eglot
-;;   :ensure t
-;;   :bind   (("C-c r" . eglot-rename)
-;;            ("C-c h" . eglot-help-at-point))
-;;   :hook   ((javascript-mode . eglot-ensure)
-;;            (rust-mode       . eglot-ensure)
-;;            (python-mode     . eglot-ensure)
-;;            (shell-mode      . eglot-ensure)
-;;            (c-mode          . eglot-ensure)
-;;            (c++-mode        . eglot-ensure))
-;;   :config
-;;   (setq help-at-pt-timer-delay 0.3
-;;         help-at-pt-display-when-idle '(flymake-diagnostic)
-;;         eglot-ignored-server-capabilites '(:documentHighlightProvider))
-;;   (help-at-pt-set-timer))
+(package-feature 'feature-lsp
+  (use-package lsp-mode
+    :ensure t
+    :commands lsp
+    :bind (:map lsp-mode-map
+                ("C-c r" . lsp-rename)
+                ("C-c h" . lsp-describe-thing-at-point)
+                ("C-c a" . lsp-execute-code-action))
+    :config
+    (setq-default lsp-prefer-flymake nil))
 
-(use-package projectile   ;; lsp uses projectile to detect the project root.
-  :ensure t
-  :defer t)
+  (use-package lsp-ui
+    :ensure t
+    :defer t
+    :commands lsp-ui-mode
+    :bind (:map lsp-ui-mode-map
+                ("C-M-." . lsp-ui-peek-find-references)
+                ("M-."   . lsp-ui-peek-find-definitions))
+    :config
+    (setq lsp-ui-sideline-ignore-duplicate t
+          lsp-ui-peek-always-show t
+          lsp-ui-doc-enable nil))
 
-(use-package lsp-mode
-  :ensure t
-  :after projectile
-  :commands lsp
-  :bind (("C-c r" . lsp-rename)
-         ("C-c h" . lsp-describe-thing-at-point))
-  :config
-  (setq-default lsp-prefer-flymake nil))
-
-(use-package lsp-ui
-  :ensure t
-  :defer t
-  :commands lsp-ui-mode
-  :bind (:map lsp-ui-mode-map
-              ("C-M-." . lsp-ui-peek-find-references)
-              ("M-."   . lsp-ui-peek-find-definitions))
-  :config
-  (setq lsp-ui-sideline-ignore-duplicate t
-        lsp-ui-peek-always-show t
-        lsp-ui-doc-enable nil))
-
-(use-package company-lsp
-  :ensure t
-  :defer t
-  :commands company-lsp
-  :config
-  (setq company-lsp-async t
-        company-lsp-enable-snippet t))
+  (use-package company-lsp
+    :ensure t
+    :defer t
+    :commands company-lsp
+    :config
+    (setq company-lsp-async t
+          company-lsp-enable-snippet t)))
 
 
 ;; Magit ---------------------------------------------------------------------------------
@@ -155,12 +262,19 @@
                          "-c" "color.diff=false"))))
 
 
-;; Ediff
+;; Ediff ---------------------------------------------------------------------------------
 (use-package ediff
   :ensure t
   :defer t
-  :config (setq ediff-window-setup-function 'ediff-setup-windows-plain
+  :config (setq ediff-diff-options "-w"
+                ediff-window-setup-function 'ediff-setup-windows-plain
                 ediff-split-window-function 'split-window-horizontally))
+
+
+;; Term ----------------------------------------------------------------------------------
+(use-package term
+  :ensure nil
+  :bind ("C-x t" . term))
 
 
 ;; Tramp ---------------------------------------------------------------------------------
@@ -170,19 +284,21 @@
   :config (setq tramp-terminal-type "tramp")) ; Use specific terminal to prevent PS1
                                               ; parsing conflict.
 
+
 ;; Dired ---------------------------------------------------------------------------------
-(use-package wdired
-  :ensure t
-  ; This is necessary so the keybindings of dired-ranger won't be overriden by a late
-  ; dired loading:
-  :demand t
+(use-package dired
+  :ensure nil
   :bind (:map dired-mode-map
               ("K" . dired-kill-subdir)
-              ("e" . dired-toggle-read-only)))
+              ("e" . dired-toggle-read-only))
+  :config
+  (setq-default dired-dwim-target t
+                dired-listing-switches "-alhG1v --group-directories-first"
+                delete-by-moving-to-trash t))
 
 (use-package dired-ranger
   :ensure t
-  :defer t
+  :after dired
   :bind (:map dired-mode-map
               ("c" . dired-ranger-copy)
               ("Y" . dired-ranger-paste)
@@ -190,10 +306,25 @@
 
 (use-package dired-quick-sort
   :ensure t
-  :defer t
-  :hook dired-mode
+  :after dired
   :bind (:map dired-mode-map
               ("s" . hydra-dired-quick-sort/body)))
+
+(use-package dired-narrow
+  :ensure t
+  :after dired
+  :bind (:map dired-mode-map
+              ("N" . dired-narrow)))
+
+(use-package dired-subtree
+  :ensure t
+  :after dired
+  :bind (:map dired-mode-map
+              ("K" . dired-subtree-remove)
+              ("i" . dired-subtree-insert))
+  :config
+  (setq dired-subtree-use-backgrounds nil
+        dired-subtree-line-prefix "    "))
 
 
 ;; Org -----------------------------------------------------------------------------------
@@ -211,9 +342,15 @@
               ;; Expand region:
               ("C-," . nil)
               ("C-c a" . org-agenda))
+  :init
+  (defvar org-babel-languages '((emacs-lisp . t)
+                                (dot . t)))
+
+  (defun org-babel-add-language (lang)
+      (add-to-list 'org-babel-languages `(,lang . t)))
   :config
-  (mapc (lambda (arg) (setcdr arg (list (downcase (cadr arg))))) ; lowercase structure templates
-    org-structure-template-alist)
+  ;; (mapc (lambda (arg) (setcdr arg (list (downcase (cadr arg))))) ; lowercase structure templates
+  ;;   org-structure-template-alist)
 
   (setq org-todo-keywords '((sequence "TODO" "NEXT" "|" "DONE" "DISMISSED"))
         org-log-done 'time
@@ -232,6 +369,7 @@
          '("latexmk -pdflatex='pdflatex -shell-escape -interaction nonstopmode -output-directory %o' -pdf -f  %f"))
 
   (require 'org-tempo)  ;; `<s` and like snippets
+
   (setq org-agenda-custom-commands
         '(("1" "Week schedule" agenda "display scheduled and deadlines for the current week"
            ((org-agenda-span 'week)
@@ -247,14 +385,19 @@
             (org-deadline-warning-days 0)))
           ))
 
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((emacs-lisp . t)
-     (python . t)
-     (C . t)
-     (shell . t)))
+  (org-babel-do-load-languages 'org-babel-load-languages org-babel-languages)
+
   (put 'org-html-htmlize-output-type 'safe-local-variable (lambda (_) t))
-  (put 'org-table-convert-region-max-lines 'safe-local-variable (lambda (_) t)))
+  (put 'org-table-convert-region-max-lines 'safe-local-variable (lambda (_) t))
+
+  (defun org-prop (prop)
+    (org-entry-get (point) prop t))
+
+  (defun org-src (name)
+    (org-element-property
+     :value
+     (org-element--parse-to
+      (org-babel-find-named-block name)))))
 
 
 
@@ -269,71 +412,119 @@
   :after calfw
   :config (setq cfw:org-overwrite-default-keybinding t))
 
-;; (use-package ox-reveal ; TODO: replace with org-re-reveal or emacs-reveal
-;;   :ensure t
-;;   :after  org
-;;   :config
-;;   (setq org-reveal-root "http://cdn.jsdelivr.net/reveal.js/3.0.0/"))
+(package-feature 'feature-org-reveal
+  (use-package org-re-reveal
+    :ensure t
+    :after  org
+    :config
+    (setq org-re-reveal-root "http://cdn.jsdelivr.net/reveal.js/3.0.0/")))
+
+(package-feature 'feature-ob-mongo
+  (use-package ob-mongo
+    :ensure t
+    :after org))
+
+(package-feature 'feature-ob-async
+  (use-package ob-async
+    :ensure t
+    :after org))
+
+
+;; Docview -------------------------------------------------------------------------------
+(use-package doc-view
+  :ensure nil
+  :config
+  (setq-default doc-view-continuous t))
 
 
 ;; Pdf-tools -----------------------------------------------------------------------------
-(use-package pdf-tools
-  :ensure t
-  :defer  t
-  :magic  ("%PDF" . pdf-view-mode)
-  :config (pdf-tools-install))
+(package-feature 'feature-pdftools
+  (use-package pdf-tools
+    :ensure t
+    :defer  t
+    :magic  ("%PDF" . pdf-view-mode)
+    :config (pdf-tools-install)))
 
 
 ;; C-mode --------------------------------------------------------------------------------
-(use-package cquery
-  :ensure t
-  :defer t
-  :hook ((c-mode   . (lambda () (require 'cquery) (lsp)))
-         (c++-mode . (lambda () (require 'cquery) (lsp)))))
+(use-package cc-mode
+  :ensure nil
+  :mode ("\\.impl\\'" . c++-mode)
+  :hook (c-mode . c-toggle-comment-style)
+  :config
+  (setq-default c-basic-offset 2
+                c-default-style "stroustrup")
+  (c-set-offset 'substatement-open 0))
+
+(package-feature 'feature-lsp-c
+  (use-package ccls
+    :ensure t
+    :defer t
+    :hook ((c-mode c++-mode) . (lambda () (require 'ccls) (lsp)))))
 
 
 ;; Bash ----------------------------------------------------------------------------------
 (use-package sh-script
   :ensure t
   :defer  t
+  :init (org-babel-add-language 'shell)
   :config (setq sh-basic-offset 2))
 
 
 ;; Javascript ----------------------------------------------------------------------------
-(use-package js2-mode
-  :ensure t
-  :defer  t
-  :mode "\\.js\\'"
-  :hook (js2-mode . lsp)
-  :config (setq js-indent-level 2))
+(package-feature 'feature-javascript
+  (use-package js2-mode
+    :ensure t
+    :defer  t
+    :mode "\\.js\\'"
+    :hook (js2-mode . lsp)
+    :config (setq js-indent-level 2)))
 
 
 ;; Java ----------------------------------------------------------------------------------
-(use-package lsp-java
-  :ensure t
-  :defer t
-  :hook (java-mode . (lambda () (require 'lsp-java) (lsp)))
-  :config
-  (setq lsp-java-server-install-dir "/usr/share/java/jdtls/"
-        lsp-java--workspace-folders (list "/home/effy/.emacs.d/workspace/")))
-
+(package-feature 'feature-lsp-java
+  (use-package lsp-java
+    :ensure t
+    :defer t
+    :hook (java-mode . (lambda () (require 'lsp-java) (lsp)))
+    :config
+    (setq lsp-java-server-install-dir "/usr/share/java/jdtls/"
+          lsp-java-workspace-dir (concat (getenv "XDG_CACHE_HOME") "/eclipse-workspace/"))
+    ;; For android projects, add these entries to the .classpath file in jdt.ls-java-project:
+    ;; <classpathentry kind="src" path="app-dir-with-classpaths">
+    ;; <classpathentry kind="lib"
+    ;;                 path="/path/to/sdk/platforms/android-XXX/android.jar"
+    ;;                 sourcepath="/path/to/sdk/sources/android-XXX">
+    ))
 
 
 ;; Python --------------------------------------------------------------------------------
-(use-package python
-  :ensure t
-  :defer  t
-  :hook (python-mode . lsp)
-  :config (setq python-indent-offset 4
-                python-guess-indent nil))
+(package-feature 'feature-python
+  (use-package python
+    :ensure t
+    :defer  t
+    :hook (python-mode . lsp)
+    :init (org-babel-add-language 'python)
+    :config (setq python-indent-offset 4
+                  python-guess-indent nil)))
+
+
+;; Jupyter -------------------------------------------------------------------------------
+(package-feature 'feature-ein
+ (use-package ein
+   :ensure t
+   :defer t
+   :config
+   (setq ein:polymode t)))  ; inline images and some other stuff.
 
 
 ;; Rust ----------------------------------------------------------------------------------
-(use-package rust-mode
-  :ensure t
-  :defer  t
-  :hook (rust-mode . lsp)
-  :config (setq-default rust-indent-offset 2))
+(package-feature 'feature-rust
+  (use-package rust-mode
+    :ensure t
+    :defer  t
+    :hook (rust-mode . lsp)
+    :config (setq-default rust-indent-offset 2)))
 
 
 ;; Scala----------------------------------------------------------------------------------
@@ -345,79 +536,61 @@
 
 
 ;; Haskell -------------------------------------------------------------------------------
-(use-package haskell-mode
-  :ensure t
-  :defer t
-  :hook (haskell-mode . turn-on-haskell-indent) ; Replace by structured-haskell-mode.
-  :config
-  (setq haskell-indent-offset 2
-        haskell-font-lock-symbols t)
+(package-feature 'feature-haskell
+  (use-package haskell-mode
+    :ensure t
+    :defer t
+    :init (org-babel-add-language 'haskell)
+    :hook (haskell-mode . turn-on-haskell-indent) ; Replace by structured-haskell-mode.
+    :config
+    (setq haskell-indent-offset 2
+          haskell-font-lock-symbols t)
 
-  (eval-after-load 'haskell-font-lock
-    '(progn
-       (defconst haskell-font-lock-symbols-alist
-                 '(("\\" . "λ") ("." "∘" haskell-font-lock-dot-is-not-composition)))
-       ;; (setq haskell-font-lock-keywords (haskell-font-lock-keywords-create nil))
-       )))
+    (eval-after-load 'haskell-font-lock
+      '(progn
+         (defconst haskell-font-lock-symbols-alist
+           '(("\\" . "λ") ("." "∘" haskell-font-lock-dot-is-not-composition)))
+         ;; (setq haskell-font-lock-keywords (haskell-font-lock-keywords-create nil))
+         )))
 
-(use-package intero
-  :ensure t
-  :defer t
-  :hook (haskell-mode . intero-mode))
+  ;; (use-package shm
+  ;;   :ensure t
+  ;;   :hook (haskell-mode . structured-haskell-mode))
+  )
 
-;; (use-package shm
-;;   :ensure t
-;;   :hook (haskell-mode . structured-haskell-mode))
+(package-feature 'feature-haskell-lsp
+  (use-package intero
+    :ensure t
+    :defer t
+    :hook (haskell-mode . intero-mode)))
 
 
 ;; Lua -----------------------------------------------------------------------------------
-(use-package lua-mode
-  :ensure t
-  :defer t
-  :hook (lua-mode . lsp)
-  :config
-  (setq lua-indent-level 2))
+(package-feature 'feature-lua
+  (use-package lua-mode
+    :ensure t
+    :defer t
+    :hook (lua-mode . lsp)
+    :config
+    (setq lua-indent-level 2)))
 
-(use-package lsp-lua
-  :after lsp
-  :init (provide 'lsp-lua)
-  :config
-  (lsp-register-client
-   (make-lsp-client :new-connection (lsp-stdio-connection "lua-lsp")
-                    :major-modes '(lua-mode)
-                    :server-id 'lua-ls))
-  (setq lsp-prefer-flymake nil))
-
-
-;; (use-package company-lsp
-;;   (setq company-lsp-enable-recompletion t))
-
-;; (defun company-lua-mode-setup()
-;;   "Create lua company backend."
-;;   (setq-local company-backends '(
-;;                                  (
-;;                                   company-lsp
-;;                                   company-lua
-;;                                   company-keywords
-;;                                   company-gtags
-;;                                   company-yasnippet
-;;                                   )
-;;                                  company-capf
-;;                                  company-dabbrev-code
-;;                                  company-files
-;;                                  )
-;;        ))
-
-;; (use-package lua-mode
-;;   :hook (lua-mode . company-lua-mode-setup))
+(package-feature 'feature-lsp-lua
+  (use-package lsp-lua
+    :after lsp
+    :init (provide 'lsp-lua)
+    :config
+    (lsp-register-client
+     (make-lsp-client :new-connection (lsp-stdio-connection "lua-lsp")
+                      :major-modes '(lua-mode)
+                      :server-id 'lua-ls))
+    (setq lsp-prefer-flymake nil)))
 
 
 ;; HTML ----------------------------------------------------------------------------------
 (use-package web-mode
   :ensure t
   :defer t
-  :mode ("\\.html\\'"
-         "\\.marko\\'")
+  :mode ("\\.html\\'")
   :bind (:map web-mode-map
               ("C-c C-c" . web-mode-element-close)
               ("C-c C-n" . web-mode-tag-next)
@@ -426,6 +599,13 @@
   :config
   (setq web-mode-markup-indent-offset 2
         web-mode-enable-current-element-highlight t))
+
+
+;; Css -----------------------------------------------------------------------------------
+(use-package css-mode
+  :ensure nil
+  :config
+  (setq-default css-indent-offset 2))
 
 
 ;; Markdown ------------------------------------------------------------------------------
@@ -443,20 +623,22 @@
 ;; Json ----------------------------------------------------------------------------------
 (use-package json-mode
   :ensure t
-  :defer t)
+  :defer t
+  :config (setq js-indent-level 2))
 
 
 ;; Dockerfile ----------------------------------------------------------------------------
-(use-package dockerfile-mode
-  :ensure t
-  :defer t)
+(package-feature 'feature-docker
+  (use-package dockerfile-mode
+    :ensure t
+    :defer t))
 
 
 ;; Highlight Indent Guides ---------------------------------------------------------------
 (use-package highlight-indent-guides
   :ensure t
   :defer t
-  :hook (prog-mode . highlight-indent-guides-mode)
+  :hook ((python-mode emacs-lisp-mode) . highlight-indent-guides-mode)
   :config
   (setq highlight-indent-guides-method 'character
         highlight-indent-guides-responsive 'top))
@@ -487,12 +669,6 @@
    ("C-x C-n" . mc/mark-next-like-this)))
 
 
-;; Misc ----------------------------------------------------------------------------------
-(use-package misc
-  :defer t
-  :bind ("M-z" . zap-up-to-char))
-
-
 ;; Transpose frame -----------------------------------------------------------------------
 (use-package transpose-frame
   :ensure t
@@ -501,44 +677,54 @@
 
 
 ;; Ledger --------------------------------------------------------------------------------
-(use-package ledger-mode
-  :ensure t
-  :defer t
-  :mode "\\.ledger\\'"
-  :bind (:map ledger-mode-map
-              ("C-c a" . ledger-add-transaction)
-              ("C-c r" . ledger-report)
-              ("M-p"   . nil)
-              ("M-n"   . nil)
-              ("C-M-p" . ledger-navigate-prev-xact-or-directive)
-              ("C-M-n" . ledger-navigate-next-xact-or-directive))
-  :config
-  (setq ledger-reports  ; All default, but removing income from report.
-        '(("bal"     "ledger -f %(ledger-file) bal")
-          ("reg"     "ledger -f %(ledger-file) reg")
-          ("account" "ledger -f %(ledger-file) reg %(account)"))))
+(package-feature 'feature-ledger
+  (use-package ledger-mode
+    :ensure t
+    :defer t
+    :mode "\\.ledger\\'"
+    :bind (:map ledger-mode-map
+                ("C-c a" . ledger-add-transaction)
+                ("C-c r" . ledger-report)
+                ("M-p"   . nil)
+                ("M-n"   . nil)
+                ("C-M-p" . ledger-navigate-prev-xact-or-directive)
+                ("C-M-n" . ledger-navigate-next-xact-or-directive))
+    :config
+    (setq ledger-reports  ; All default, but removing income from report.
+          '(("bal"     "ledger -f %(ledger-file) bal")
+            ("reg"     "ledger -f %(ledger-file) reg")
+            ("account" "ledger -f %(ledger-file) reg %(account)")))))
 
 
 ;; Togetherly ----------------------------------------------------------------------------
-(use-package togetherly
-  :ensure t)
+(package-feature 'feature-togetherly
+  (use-package togetherly
+    :ensure t
+    :defer t))
+
+
+;; Restclient ----------------------------------------------------------------------------
+(package-feature 'feature-restclient
+  (use-package restclient
+    :ensure t
+    :defer t)
+
+  (use-package ob-restclient
+    :ensure t
+    :defer t
+    :init (org-babel-add-language 'restclient)))
+
 
 ;; Helm-Spotify-plus----------------------------------------------------------------------
-(use-package helm-spotify-plus
-  :ensure t
-  :bind
-  (("C-c s s" . 'helm-spotify-plus)  ;; s for SEARCH
-   ("C-c s f" . 'helm-spotify-plus-next)
-   ("C-c s b" . 'helm-spotify-plus-previous)
-   ("C-c s p" . 'helm-spotify-plus-play)
-   ("C-c s g" . 'helm-spotify-plus-pause)))
-
-
-;; Undo-Tree------------------------------------------------------------------------------
-(use-package undo-tree
-  :ensure t
-  :config
-  (global-undo-tree-mode))
+(package-feature 'spotify
+  (use-package helm-spotify-plus
+    :ensure t
+    :bind
+    (("C-c s s" . 'helm-spotify-plus)  ;; s for SEARCH
+     ("C-c s f" . 'helm-spotify-plus-next)
+     ("C-c s b" . 'helm-spotify-plus-previous)
+     ("C-c s p" . 'helm-spotify-plus-play)
+     ("C-c s g" . 'helm-spotify-plus-pause))))
 
 
 ;; webpaste-------------------------------------------------------------------------------

@@ -210,6 +210,8 @@ determine the exact padding."
    ;; magit
    (magit-filename :foreground fg)
    (magit-mode-line-process :foreground fg :inherit 'italic)
+   (magit-blame-heading :foreground fg :background base3 :weight 'bold)
+   (magit-blame-date :foreground red :weight 'semi-bold)
    (magit-diff-file-heading-selection :background selection :foreground silver)
    (magit-diff-file-heading-highlight :foreground bg :background bright-blue :weight 'bold)
    (magit-diff-hunk-heading :foreground bg :background base5)
@@ -217,6 +219,10 @@ determine the exact padding."
    (magit-diff-removed :foreground red :background (doom-blend red bg 0.1))
    (magit-diff-removed-highlight :foreground red :background (doom-blend red bg 0.3) :weight 'bold)
    (git-commit-overlong-summary :background bg :foreground bright-red)
+
+   ;; wgrep
+   (wgrep-face :background (doom-blend green bg 0.2))
+   (wgrep-delete-face :background (doom-blend red bg 0.2))
 
    ;; ivy
    (ivy-posframe :background (doom-blend blue bg 0.2))

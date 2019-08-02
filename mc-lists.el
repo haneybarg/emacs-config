@@ -24,6 +24,7 @@
         cycle-spacing
         dabbrev-expand
         delete-horizontal-space
+        dired-previous-line
         down-list
         downcase-region
         electric-newline-and-maybe-indent
@@ -47,6 +48,7 @@
         org-demote-subtree
         org-end-of-line
         org-force-self-insert
+        org-kill-line
         org-return
         org-return-indent
         org-self-insert-command
