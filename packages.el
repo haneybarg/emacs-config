@@ -31,11 +31,15 @@
 ;; Emacs ---------------------------------------------------------------------------------
 (use-package emacs
   :ensure nil
+  :diminish ((eldoc-mode . "𝔼")
+             (abbrev-mode . "𝔸"))
   :bind (("C-;"   . comment-line)
          ("M-SPC" . cycle-spacing)
          ("C-."   . pop-tag-mark)
 
-         ("C-x k" . kill-this-buffer))
+         ("C-x k" . kill-this-buffer)
+
+         ("M-o" . other-frame))
   :config
   (setq-default make-backup-files nil
                 truncate-lines t ;; disable word-wrap.
@@ -121,11 +125,14 @@
   :bind ("M-z" . zap-up-to-char))
 
 
-;; Powerline -----------------------------------------------------------------------------
+;; Modeline ------------------------------------------------------------------------------
 (use-package powerline
   :ensure t
   :config (setq powerline-height 18
                 powerline-default-separator 'slant))
+
+(use-package diminish
+  :ensure t)
 
 
 ;; Doom themes ---------------------------------------------------------------------------
@@ -137,6 +144,7 @@
 ;; Helm ----------------------------------------------------------------------------------
 (use-package helm
   :ensure t
+  :diminish "Ξ"
   :config
   (helm-mode)
   (setq helm-buffer-skip-remote-checking t ; Prevent helm-mini from querying remote buffers
@@ -170,6 +178,7 @@
 (use-package company
   :ensure t
   :defer t
+  :diminish "ℂ"
   :config
   (setq company-idle-delay 0.3)
   (global-company-mode))
@@ -194,6 +203,7 @@
 (use-package yasnippet
   :ensure t
   :defer t
+  :diminish (yas-minor-mode . "¥")
   :hook   (prog-mode . yas-global-mode))
 
 (use-package yasnippet-snippets
@@ -204,7 +214,8 @@
 (use-package flycheck
   :ensure t
   :defer t
-  :hook   (prog-mode . flycheck-mode)
+  :diminish "𝔽"
+  :hook (prog-mode . flycheck-mode)
   :config
   ; For some reason, the following does not work with setq, only with setq-default.
   (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc)))
@@ -215,6 +226,7 @@
   (use-package lsp-mode
     :ensure t
     :commands lsp
+    :diminish "𝕃"
     :bind (:map lsp-mode-map
                 ("C-c r" . lsp-rename)
                 ("C-c h" . lsp-describe-thing-at-point)
@@ -272,9 +284,32 @@
 
 
 ;; Term ----------------------------------------------------------------------------------
-(use-package term
-  :ensure nil
-  :bind ("C-x t" . term))
+(use-package multi-term
+  :ensure t
+  :bind (("C-x t" . multi-term)
+         :map term-mode-map
+         ("C-c C-j" . term-char-mode)
+         :map term-raw-map
+         ("C-c C-j" . term-line-mode))
+  :init
+  ;; (advice-add 'multi-term :after #'term-line-mode) ; start in line mode
+  (setq multi-term-buffer-name "term"
+        term-bind-key-alist
+        '(("C-c C-j" . term-line-mode)
+          ("C-c C-c" . term-interrupt-subjob)
+          ("C-c C-e" . term-send-esc)
+          ("C-m" . term-send-return)
+          ("C-y" . term-paste)
+          ("<C-i>" . term-paste)
+          ("M-d" . term-send-forward-kill-word)
+          ("M-f" . term-send-forward-word)
+          ("M-b" . term-send-backward-word)
+          ("M-p" . term-send-up)
+          ("M-n" . term-send-down)
+          ("M-r" . term-send-reverse-search-history)
+          ("M->" . term-send-raw-meta)
+          ("M-<" . term-send-raw-meta)
+          ("M-a" . term-send-home))))
 
 
 ;; Tramp ---------------------------------------------------------------------------------
@@ -353,6 +388,8 @@
   ;;   org-structure-template-alist)
 
   (setq org-todo-keywords '((sequence "TODO" "NEXT" "|" "DONE" "DISMISSED"))
+        org-catch-invisible-edits 'show-and-error
+        org-list-allow-alphabetical t
         org-log-done 'time
         org-tags-column 0
         org-agenda-tags-column 0
@@ -638,6 +675,7 @@
 (use-package highlight-indent-guides
   :ensure t
   :defer t
+  :diminish "Ⅲ"
   :hook ((python-mode emacs-lisp-mode) . highlight-indent-guides-mode)
   :config
   (setq highlight-indent-guides-method 'character
