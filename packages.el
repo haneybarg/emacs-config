@@ -111,6 +111,7 @@
 ;; Windmove ------------------------------------------------------------------------------
 (use-package windmove
   :ensure nil
+  :defer nil
   :bind (("s-w" . windmove-up)
          ("s-d" . windmove-right)
          ("s-s" . windmove-down)
@@ -269,9 +270,9 @@
                                          t
                                          10)))
           (setq magit-git-global-arguments ; magit over tramp
-                (nconc magit-git-global-arguments
-                       '("-c" "color.ui=false"
-                         "-c" "color.diff=false"))))
+                (append magit-git-global-arguments
+                        '("-c" "color.ui=false"
+                          "-c" "color.diff=false"))))
 
 
 ;; Ediff ---------------------------------------------------------------------------------
@@ -388,6 +389,7 @@
   ;;   org-structure-template-alist)
 
   (setq org-todo-keywords '((sequence "TODO" "NEXT" "|" "DONE" "DISMISSED"))
+        org-hide-emphasis-markers t
         org-catch-invisible-edits 'show-and-error
         org-list-allow-alphabetical t
         org-log-done 'time
@@ -426,6 +428,7 @@
 
   (put 'org-html-htmlize-output-type 'safe-local-variable (lambda (_) t))
   (put 'org-table-convert-region-max-lines 'safe-local-variable (lambda (_) t))
+  (put 'org-latex-toc-command 'safe-local-variable (lambda (_) t))
 
   (defun org-prop (prop)
     (org-entry-get (point) prop t))
@@ -437,6 +440,11 @@
       (org-babel-find-named-block name)))))
 
 
+(use-package org-bullets
+  :ensure t
+  :hook (org-mode . org-bullets-mode)
+  :config
+  (setq org-bullets-bullet-list '("⁖")))
 
 (use-package calfw
   :ensure t
@@ -447,6 +455,7 @@
   :ensure t
   :defer t
   :after calfw
+  :commands cfw:open-org-calendar
   :config (setq cfw:org-overwrite-default-keybinding t))
 
 (package-feature 'feature-org-reveal
@@ -635,6 +644,7 @@
               ("C-<tab>" . web-mode-fold-or-unfold))
   :config
   (setq web-mode-markup-indent-offset 2
+        web-mode-code-indent-offset 2
         web-mode-enable-current-element-highlight t))
 
 
@@ -668,7 +678,12 @@
 (package-feature 'feature-docker
   (use-package dockerfile-mode
     :ensure t
-    :defer t))
+    :defer t)
+
+  (use-package docker
+    :ensure t
+    :defer t
+    :commands docker))
 
 
 ;; Highlight Indent Guides ---------------------------------------------------------------

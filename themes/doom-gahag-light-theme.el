@@ -63,7 +63,7 @@ determine the exact padding."
    (teal        '("#29838D" "#44b9b1" "brightgreen"))
    (yellow      '("#fa8231" "#ECBE7B" "yellow"))
    (bright-blue '("#3498db" "#3498db" "brightblue"))
-   (blue        '("#1e3799" "#51afef" "brightblue"))
+   (blue        '("#223fae" "#51afef" "brightblue"))
    (dark-blue   '("#5272AF" "#2257A0" "blue"))
    (magenta     '("#8854d0" "#c678dd" "magenta"))
    (violet      '("#c1408c" "#a9a1e1" "brightmagenta"))
@@ -220,6 +220,10 @@ determine the exact padding."
    (magit-diff-removed-highlight :foreground red :background (doom-blend red bg 0.3) :weight 'bold)
    (git-commit-overlong-summary :background bg :foreground bright-red)
 
+   ;; ediff
+   (ediff-current-diff-A :background (doom-blend green bg 0.2))
+   (ediff-fine-diff-A :background (doom-blend green bg 0.35))
+
    ;; wgrep
    (wgrep-face :background (doom-blend green bg 0.2))
    (wgrep-delete-face :background (doom-blend red bg 0.2))
@@ -259,6 +263,7 @@ determine the exact padding."
 
    ;; web-mode
    (web-mode-html-tag-face :foreground blue)
+   (web-mode-html-tag-namespaced-face :foreground blue)
    (web-mode-html-tag-unclosed-face :foreground red)
    (web-mode-current-element-highlight-face :foreground blue :background bg :weight 'bold)
 
@@ -277,10 +282,21 @@ determine the exact padding."
    (nav-flash-face :background region :foreground base8 :weight 'bold)
    ;; org-mode
    (org-hide :foreground hidden)
-   (org-headline-done :foreground grey :weight 'bold)
+   (org-todo :foreground green :underline t :weight 'bold)
+   (org-done :foreground grey :underline t :weight 'bold)
+   (org-headline-done :foreground grey :weight 'semi-bold)
+   (org-checkbox :foreground green :weight 'semi-bold)
+   (org-checkbox-statistics-todo :foreground green :weight 'bold)
+   (org-checkbox-statistics-done :foreground grey :weight 'bold)
    (org-date :foreground fg :weight 'bold)
-   (org-level-1 :background bg :foreground blue :weight 'ultra-bold)
-   (org-level-2 :background bg :foreground teal :weight 'extra-bold)
+   (org-level-1 :background bg :foreground blue :weight 'semi-bold)
+   (org-level-2 :background bg :foreground bright-blue :weight 'semi-bold)
+   (org-level-3 :background bg :foreground violet :weight 'semi-bold)
+   (org-level-4 :background bg :foreground green :weight 'semi-bold)
+   (org-level-5 :background bg :foreground magenta :weight 'semi-bold)
+   (org-level-6 :background bg :foreground bright-blue :weight 'semi-bold)
+   (org-level-7 :background bg :foreground violet :weight 'semi-bold)
+   (org-level-8 :background bg :foreground black :weight 'semi-bold)
    (org-block   :background (doom-darken bg 0.02))
    (org-block-begin-line :foreground fg-alt :weight 'bold)
    (org-code :foreground green)
