@@ -205,7 +205,7 @@
 ;; Helm ----------------------------------------------------------------------------------
 (use-package helm
   :ensure t
-  :diminish "Ξ"
+  :diminish (helm-mode . "Ξ")
   :config
   (helm-mode)
   (setq helm-buffer-skip-remote-checking t ; Prevent helm-mini from querying remote buffers
@@ -811,6 +811,19 @@
   :config
   (setq highlight-indent-guides-method 'character
         highlight-indent-guides-responsive 'top))
+
+
+;; Hideshow ------------------------------------------------------------------------------
+(use-package hideshow
+  :ensure nil
+  :diminish (hs-minor-mode . "⋯")
+  :bind ("C-c q" . hs-toggle)
+  :config
+  (defun hs-toggle ()
+    (interactive)
+    (unless (bound-and-true-p hs-minor-mode)
+      (hs-minor-mode))
+    (hs-toggle-hiding)))
 
 
 ;; Expand region -------------------------------------------------------------------------
