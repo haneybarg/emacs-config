@@ -7,6 +7,7 @@
         backward-kill-sentence
         backward-sexp
         beginning-of-buffer
+        beginning-of-visual-line
         c-electric-brace
         c-electric-colon
         c-electric-delete-forward
@@ -69,6 +70,7 @@
         upcase-region
         wdired-capitalize-word
         wdired-downcase-word
+        wdired-upcase-word
         yaml-electric-backspace
         yaml-electric-dash-and-dot
         yas-expand
@@ -81,6 +83,8 @@
         ace-jump-mode
         complete-symbol
         delete-rectangle
+        dired-toggle-read-only
+        handle-switch-frame
         helm-M-x
         helm-confirm-and-exit-minibuffer
         helm-find-files
@@ -94,8 +98,10 @@
         mouse-buffer-menu
         org-ctrl-c-ctrl-c
         org-fill-paragraph
+        other-frame
         repeat
         revert-buffer
         wdired-finish-edit
         write-file
+        xref-find-definitions
         ))

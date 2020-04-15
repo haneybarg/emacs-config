@@ -32,24 +32,27 @@
 (use-package emacs
   :ensure nil
   :diminish ((eldoc-mode . "𝔼")
-             (abbrev-mode . "𝔸"))
-  :bind (("C-;"   . comment-line)
+             (abbrev-mode . "𝔸")
+             (visual-line-mode . "↲")
+             (subword-mode . ""))
+  :bind (("C-x C-r" . replace-string)
+         ("C-;"   . comment-line)
          ("M-SPC" . cycle-spacing)
          ("C-."   . pop-tag-mark)
 
          ("C-x k" . kill-this-buffer)
 
-         ("M-o" . other-frame))
+         ("M-o" . other-frame)
+
+         ("M-#" . quick-calc))
+  :bind (:map occur-mode-map
+              ("n" . occur-next)
+              ("p" . occur-prev))
   :config
   (setq-default make-backup-files nil
                 truncate-lines t ;; disable word-wrap.
                 require-final-newline t
 
-                ;; Indentation
-                tab-width 2
-                tab-always-indent nil
-                indent-tabs-mode  nil
-                tab-stop-list (number-sequence 0 200 2)
                 fill-column 90
                 comment-column 0)
 
@@ -62,6 +65,9 @@
   (put 'downcase-region  'disabled nil)
 
   ;; File local variables
+  (defun reload-local-variables ()
+    (interactive)
+    (hack-local-variables))
   (put 'before-save-hook 'safe-local-variable (lambda (_) t))
   (put 'after-save-hook  'safe-local-variable (lambda (_) t))
 
@@ -80,6 +86,7 @@
   (desktop-save-mode t)
   (recentf-mode t)
   (eldoc-mode)
+  (global-subword-mode)
   ;;(semantic-mode)
 
   ;; Keys
@@ -97,6 +104,58 @@
   (set-register ?e '(file . "~/.emacs.d/init.el"))
   (set-register ?E `(file . ,dotemacs-file))
   (set-register ?p `(file . ,(concat dotemacs-dir "packages.el"))))
+
+
+;; Whitespace ----------------------------------------------------------------------------
+(use-package whitespace
+  :ensure nil
+  :diminish "𝕎"
+  :hook (prog-mode . whitespace-mode)
+  :init
+  (defvar indent-size 2)
+
+  (defun indent-tabs-mode ()
+    (interactive)
+    (setq-local indent-tabs-mode t))
+
+  (defun indent-spaces-mode ()
+    (interactive)
+    (setq-local indent-tabs-mode nil))
+
+  (defun set-indent-size (size global)
+    "Set the tab size for the current buffer."
+    (interactive (list (read-number "Size: ")
+                       (y-or-n-p "Global? ")))
+    (let ((variables '(tab-width
+                       c-basic-offset
+                       css-indent-offset
+                       haskell-indent-offset
+                       js-indent-level
+                       lua-indent-level
+                       python-indent-offset
+                       rust-indent-offset
+                       sh-basic-offset
+                       web-mode-markup-indent-offset
+                       web-mode-code-indent-offset)))
+      (mapc (lambda (var)
+              (if global
+                  (set-default var size)
+                  (progn
+                    (make-local-variable var)
+                    (set var size))))
+            variables)))
+
+  (defun align-whitespace (size)
+    "Align columns delimited by whitespace."
+    (interactive "NSize: ") ;; Number
+    (align-regexp (region-beginning) (region-end) "\\(\\s-*\\)\\s-" 1 size 't))
+
+  :config
+  (set-indent-size indent-size 't)
+  (setq-default backward-delete-char-untabify-method nil
+
+                whitespace-style '(face tabs tab-mark trailing)
+                whitespace-display-mappings '((tab-mark 9 [?\u2502 9])))) ; 9 = ascii TAB
 
 
 ;; Recentf -------------------------------------------------------------------------------
@@ -196,8 +255,8 @@
   :ensure t
   :commands rg
   :bind (:map rg-mode-map
-              ("n" . rg-next-file)
-              ("p" . rg-prev-file)))
+              ("n" . next-line)
+              ("p" . previous-line)))
 
 
 ;; Yasnippet -----------------------------------------------------------------------------
@@ -233,7 +292,8 @@
                 ("C-c h" . lsp-describe-thing-at-point)
                 ("C-c a" . lsp-execute-code-action))
     :config
-    (setq-default lsp-prefer-flymake nil))
+    (setq-default lsp-prefer-flymake nil
+                  lsp-file-watch-threshold 10000))
 
   (use-package lsp-ui
     :ensure t
@@ -285,32 +345,21 @@
 
 
 ;; Term ----------------------------------------------------------------------------------
-(use-package multi-term
+(use-package vterm
   :ensure t
-  :bind (("C-x t" . multi-term)
-         :map term-mode-map
-         ("C-c C-j" . term-char-mode)
-         :map term-raw-map
-         ("C-c C-j" . term-line-mode))
-  :init
+  :bind (("C-c t" . vterm)
+         :map vterm-mode-map
+         ("C-y" . vterm-send-C-y)
+         ("M-<" . vterm--self-insert)
+         ("M->" . vterm--self-insert)
+         ("C-c C-j" . vterm-copy-mode)
+         :map vterm-copy-mode-map
+         ("C-c C-j" . vterm-copy-mode))
+  ;; :init
   ;; (advice-add 'multi-term :after #'term-line-mode) ; start in line mode
-  (setq multi-term-buffer-name "term"
-        term-bind-key-alist
-        '(("C-c C-j" . term-line-mode)
-          ("C-c C-c" . term-interrupt-subjob)
-          ("C-c C-e" . term-send-esc)
-          ("C-m" . term-send-return)
-          ("C-y" . term-paste)
-          ("<C-i>" . term-paste)
-          ("M-d" . term-send-forward-kill-word)
-          ("M-f" . term-send-forward-word)
-          ("M-b" . term-send-backward-word)
-          ("M-p" . term-send-up)
-          ("M-n" . term-send-down)
-          ("M-r" . term-send-reverse-search-history)
-          ("M->" . term-send-raw-meta)
-          ("M-<" . term-send-raw-meta)
-          ("M-a" . term-send-home))))
+  :config
+  (setq vterm-kill-buffer-on-exit t
+        vterm-max-scrollback 1000000))
 
 
 ;; Tramp ---------------------------------------------------------------------------------
@@ -330,7 +379,8 @@
   :config
   (setq-default dired-dwim-target t
                 dired-listing-switches "-alhG1v --group-directories-first"
-                delete-by-moving-to-trash t))
+                delete-by-moving-to-trash t
+                completion-ignored-extensions (cons ".ccls-cache/" completion-ignored-extensions)))
 
 (use-package dired-ranger
   :ensure t
@@ -367,8 +417,9 @@
 (use-package org
   :ensure t
   :pin org
-  :hook (org-babel-after-execute . (lambda () (when org-inline-image-overlays
-                                                (org-redisplay-inline-images))))
+  :hook ((org-mode . indent-spaces-mode)
+         (org-babel-after-execute . (lambda () (when org-inline-image-overlays
+                                                (org-redisplay-inline-images)))))
   :bind (:map org-mode-map
               ;; These conflict with windmove:
               ("<M-up>"    . nil)
@@ -390,6 +441,7 @@
 
   (setq org-todo-keywords '((sequence "TODO" "NEXT" "|" "DONE" "DISMISSED"))
         org-hide-emphasis-markers t
+        org-ellipsis "..."
         org-catch-invisible-edits 'show-and-error
         org-list-allow-alphabetical t
         org-log-done 'time
@@ -401,9 +453,17 @@
         org-src-fontify-natively t
         org-src-window-setup 'current-window
 
+        org-highlight-latex-and-related '(latex script entities)
+
+        ;; Inline images:
+        org-display-inline-images t
+        org-redisplay-inline-images t
+        org-startup-with-inline-images "inlineimages"
+
         ;; Minted setup:
         org-latex-listings 'minted
         org-latex-packages-alist '(("" "minted"))
+        org-latex-minted-options '(("fontsize" "\\small") ("tabsize" "4"))
         org-latex-pdf-process
          '("latexmk -pdflatex='pdflatex -shell-escape -interaction nonstopmode -output-directory %o' -pdf -f  %f"))
 
@@ -429,15 +489,34 @@
   (put 'org-html-htmlize-output-type 'safe-local-variable (lambda (_) t))
   (put 'org-table-convert-region-max-lines 'safe-local-variable (lambda (_) t))
   (put 'org-latex-toc-command 'safe-local-variable (lambda (_) t))
+  (put 'org-after-todo-state-change-hook 'safe-local-variable (lambda (_) t))
 
   (defun org-prop (prop)
     (org-entry-get (point) prop t))
 
   (defun org-src (name)
-    (org-element-property
-     :value
-     (org-element--parse-to
-      (org-babel-find-named-block name)))))
+    (org-element-property :value (org-element--parse-to
+                                  (org-babel-find-named-block name))))
+
+  (defun org-refile-to (headline)
+    "Move current subtree to specified headline"
+    (org-refile nil
+                nil
+                (list headline
+                      (buffer-file-name)
+                      nil
+                      (org-find-exact-headline-in-buffer (capitalize headline)))))
+
+  (defun org-refile-todo ()
+    "Move current subtree to the corresponding todo heading"
+    (interactive)
+    (when (eq (org-current-level) 2)
+      (org-refile-to (org-get-todo-state))))
+
+  (defun org-done-after (date)
+    (interactive "SDone after: ")
+    (org-tags-view nil
+                   (format "CLOSED>=\"[%s]\"" date))))
 
 
 (use-package org-bullets
@@ -458,12 +537,23 @@
   :commands cfw:open-org-calendar
   :config (setq cfw:org-overwrite-default-keybinding t))
 
+(use-package ox-latex
+  :ensure nil
+  :defer t
+  :config
+  (add-to-list 'org-latex-classes
+               '("letter" "\\documentclass{letter}"
+                 ("\\section{%s}" . "\\section*{%s}")
+                 ("\\subsection{%s}" . "\\subsection*{%s}")
+                 ("\\subsubsection{%s}" . "\\subsubsection*{%s}"))))
+
 (package-feature 'feature-org-reveal
   (use-package org-re-reveal
     :ensure t
     :after  org
     :config
-    (setq org-re-reveal-root "http://cdn.jsdelivr.net/reveal.js/3.0.0/")))
+    (setq org-re-reveal-root "http://cdn.jsdelivr.net/reveal.js/3.0.0/"
+          org-re-reveal-plugins '(markdown notes zoom))))
 
 (package-feature 'feature-ob-mongo
   (use-package ob-mongo
@@ -492,13 +582,19 @@
     :config (pdf-tools-install)))
 
 
+;; Elisp-mode ----------------------------------------------------------------------------
+(use-package elisp-mode
+  :ensure nil
+  :hook (emacs-lisp-mode . indent-spaces-mode))
+
+
 ;; C-mode --------------------------------------------------------------------------------
 (use-package cc-mode
   :ensure nil
   :mode ("\\.impl\\'" . c++-mode)
   :hook (c-mode . c-toggle-comment-style)
   :config
-  (setq-default c-basic-offset 2
+  (setq-default c-basic-offset indent-size
                 c-default-style "stroustrup")
   (c-set-offset 'substatement-open 0))
 
@@ -506,7 +602,9 @@
   (use-package ccls
     :ensure t
     :defer t
-    :hook ((c-mode c++-mode) . (lambda () (require 'ccls) (lsp)))))
+    :hook ((c-mode c++-mode) . (lambda () (require 'ccls) (lsp)))
+    :config
+    (setq lsp-enable-on-type-formatting nil)))
 
 
 ;; Bash ----------------------------------------------------------------------------------
@@ -514,7 +612,7 @@
   :ensure t
   :defer  t
   :init (org-babel-add-language 'shell)
-  :config (setq sh-basic-offset 2))
+  :config (setq sh-basic-offset indent-size))
 
 
 ;; Javascript ----------------------------------------------------------------------------
@@ -524,7 +622,7 @@
     :defer  t
     :mode "\\.js\\'"
     :hook (js2-mode . lsp)
-    :config (setq js-indent-level 2)))
+    :config (setq js-indent-level indent-size)))
 
 
 ;; Java ----------------------------------------------------------------------------------
@@ -549,10 +647,19 @@
   (use-package python
     :ensure t
     :defer  t
-    :hook (python-mode . lsp)
+    :hook ((python-mode . python-indent-setup)
+           (python-mode . lsp))
     :init (org-babel-add-language 'python)
-    :config (setq python-indent-offset 4
-                  python-guess-indent nil)))
+    :config
+    (setq-default org-babel-python-command "python3")
+
+    (defun python-indent-setup ()
+      (indent-tabs-mode)
+      (set-indent-size indent-size nil)
+      (setq-local py-indent-tabs-mode t))
+
+    (setq python-indent-offset indent-size
+          python-guess-indent nil)))
 
 
 ;; Jupyter -------------------------------------------------------------------------------
@@ -570,7 +677,7 @@
     :ensure t
     :defer  t
     :hook (rust-mode . lsp)
-    :config (setq-default rust-indent-offset 2)))
+    :config (setq-default rust-indent-offset indent-size)))
 
 
 ;; Scala----------------------------------------------------------------------------------
@@ -589,7 +696,7 @@
     :init (org-babel-add-language 'haskell)
     :hook (haskell-mode . turn-on-haskell-indent) ; Replace by structured-haskell-mode.
     :config
-    (setq haskell-indent-offset 2
+    (setq haskell-indent-offset indent-size
           haskell-font-lock-symbols t)
 
     (eval-after-load 'haskell-font-lock
@@ -618,7 +725,7 @@
     :defer t
     :hook (lua-mode . lsp)
     :config
-    (setq lua-indent-level 2)))
+    (setq lua-indent-level indent-size)))
 
 (package-feature 'feature-lsp-lua
   (use-package lsp-lua
@@ -643,8 +750,8 @@
               ("C-c C-p" . web-mode-tag-previous)
               ("C-<tab>" . web-mode-fold-or-unfold))
   :config
-  (setq web-mode-markup-indent-offset 2
-        web-mode-code-indent-offset 2
+  (setq web-mode-markup-indent-offset indent-size
+        web-mode-code-indent-offset indent-size
         web-mode-enable-current-element-highlight t))
 
 
@@ -652,7 +759,7 @@
 (use-package css-mode
   :ensure nil
   :config
-  (setq-default css-indent-offset 2))
+  (setq-default css-indent-offset indent-size))
 
 
 ;; Markdown ------------------------------------------------------------------------------
@@ -671,7 +778,14 @@
 (use-package json-mode
   :ensure t
   :defer t
-  :config (setq js-indent-level 2))
+  :config (setq js-indent-level indent-size))
+
+
+;; Yaml
+(package-feature 'feature-yaml
+  (use-package yaml-mode
+    :ensure t
+    :defer t))
 
 
 ;; Dockerfile ----------------------------------------------------------------------------
@@ -691,7 +805,7 @@
   :ensure t
   :defer t
   :diminish "Ⅲ"
-  :hook ((python-mode emacs-lisp-mode) . highlight-indent-guides-mode)
+  :hook (emacs-lisp-mode . highlight-indent-guides-mode)
   :config
   (setq highlight-indent-guides-method 'character
         highlight-indent-guides-responsive 'top))
@@ -703,6 +817,13 @@
   :defer t
   :bind ("C-," . er/expand-region)
   :config (setq expand-region-contract-fast-key "."))
+
+
+;; Multi-line ----------------------------------------------------------------------------
+(use-package multi-line
+  :ensure t
+  :defer t
+  :bind ("C-c m" . multi-line))
 
 
 ;; Ace jump ------------------------------------------------------------------------------
@@ -760,7 +881,9 @@
 (package-feature 'feature-restclient
   (use-package restclient
     :ensure t
-    :defer t)
+    :defer t
+    :config
+    (setq restclient-inhibit-cookies t))
 
   (use-package ob-restclient
     :ensure t
@@ -788,3 +911,7 @@
   :config
   (progn
     (setq webpaste-provider-priority '("ptpb.pw" "dpaste.de"))))
+
+
+;; ---------------------------------------------------------------------------------------
+

@@ -10,13 +10,17 @@
 
 ;; features:
 (defconst package-features '(feature-lsp
+                             feature-lsp-c
                              feature-pdftools
                              feature-lsp-c
                              feature-lsp-java
                              feature-python
                              feature-rust
+                             feature-yaml
                              feature-docker
-                             feature-ledger))
+                             feature-ledger
+                             feature-org-reveal
+                             feature-langtool))
 
 (load dotemacs-file)
 
@@ -38,4 +42,4 @@
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (docker csv yaml-mode helm intero multiple-cursors lsp-java lsp-mode lsp-ui magit org powerline projectile rust-mode use-package web-mode yasnippet yasnippet-snippets rg wgrep ein pdf-tools dockerfile-mode json-mode lua-mode use-package-ensure-system-package gradle-mode highlight-indent-guides pcap-mode lsp-rust csv-mode jsx-mode rainbow-mode ox-reveal togetherly arduino-mode company-arduino company-lsp cquery lsp-python dired-quick-sort try htmlize ledger-mode calfw calfw-org company doom-themes shm transpose-frame dired-ranger latex-preview-pane nyan-mode ace-jump-mode flymake-haskell-multi haskell-mode expand-region flycheck auto-complete))))
+    (vterm langtool use-package web-mode yasnippet-snippets cmake-mode org-chef org org-re-reveal rg rust-mode org-ref multi-line csharp-mode ccls diminish dired-narrow dired-subtree multi-term org-bullets docker csv yaml-mode helm intero multiple-cursors lsp-java lsp-mode lsp-ui magit powerline yasnippet wgrep ein dockerfile-mode json-mode lua-mode use-package-ensure-system-package gradle-mode highlight-indent-guides pcap-mode lsp-rust csv-mode jsx-mode rainbow-mode ox-reveal togetherly arduino-mode company-arduino company-lsp cquery lsp-python dired-quick-sort try ledger-mode calfw calfw-org company doom-themes shm transpose-frame dired-ranger latex-preview-pane nyan-mode ace-jump-mode flymake-haskell-multi haskell-mode expand-region flycheck auto-complete))))
