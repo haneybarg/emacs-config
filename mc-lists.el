@@ -83,12 +83,12 @@
         ace-jump-mode
         complete-symbol
         delete-rectangle
-        dired-toggle-read-only
-        handle-switch-frame
+        end-of-buffer
         helm-M-x
         helm-confirm-and-exit-minibuffer
         helm-find-files
         helm-show-kill-ring
+        ignore
         jump-to-register
         kmacro-end-or-call-macro
         list-directory

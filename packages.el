@@ -102,6 +102,7 @@
 
   ;; Registers
   (set-register ?e '(file . "~/.emacs.d/init.el"))
+  (set-register ?t '(file . "/ssh:turin:/mnt/e1491766-f6aa-4a0d-a14d-a3581f898b47/drg/"))
   (set-register ?E `(file . ,dotemacs-file))
   (set-register ?p `(file . ,(concat dotemacs-dir "packages.el"))))
 
@@ -112,7 +113,7 @@
   :diminish "𝕎"
   :hook (prog-mode . whitespace-mode)
   :init
-  (defvar indent-size 2)
+  (defvar indent-size 4)
 
   (defun indent-tabs-mode ()
     (interactive)
@@ -366,8 +367,9 @@
 (use-package tramp
   :ensure t
   :defer t
-  :config (setq tramp-terminal-type "tramp")) ; Use specific terminal to prevent PS1
-                                              ; parsing conflict.
+  :config
+  (setq tramp-terminal-type "tramp") ; Use specific terminal to prevent PS1 parse error.
+  (setq remote-file-name-inhibit-cache nil))
 
 
 ;; Dired ---------------------------------------------------------------------------------
