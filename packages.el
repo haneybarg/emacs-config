@@ -216,6 +216,7 @@
                                          "\\`\\*Quail Completions\\*"
                                          "\\`\\*lsp-log\\*"
                                          "\\`\\*\\(\\w\\|-\\)+ls\\(::stderr\\)?\\*\\'"
+                                         "\\`\\*rust-analyzer\\(::stderr\\)?\\*\\'"
                                          "\\`\\*cquery\\(::stderr\\)?\\*\\'"
                                          ;; "\\`\\*EGLOT"
                                          "\\`\\*Flymake"
@@ -567,6 +568,11 @@
     :ensure t
     :after org))
 
+(package-feature 'feature-org-special-blocks
+  (use-package org-special-block-extras
+    :ensure t
+    :hook (org-mode . org-special-block-extras-mode)))
+
 
 ;; Docview -------------------------------------------------------------------------------
 (use-package doc-view
@@ -661,7 +667,18 @@
       (setq-local py-indent-tabs-mode t))
 
     (setq python-indent-offset indent-size
-          python-guess-indent nil)))
+          python-guess-indent nil))
+
+  (use-package lsp-tramp-pyls
+    :ensure nil
+    :after lsp-mode
+    :init (provide 'lsp-tramp-pyls)
+    :config
+    (lsp-register-client
+     (make-lsp-client :new-connection (lsp-tramp-connection "~/.local/bin/pyls")
+                      :major-modes '(python-mode)
+                      :remote? t
+                      :server-id 'lsp-tramp-pyls))))
 
 
 ;; Jupyter -------------------------------------------------------------------------------
@@ -679,7 +696,9 @@
     :ensure t
     :defer  t
     :hook (rust-mode . lsp)
-    :config (setq-default rust-indent-offset indent-size)))
+    :config
+    (setq-default rust-indent-offset indent-size)
+    (setq-default lsp-rust-server 'rust-analyzer)))
 
 
 ;; Scala----------------------------------------------------------------------------------
@@ -731,7 +750,7 @@
 
 (package-feature 'feature-lsp-lua
   (use-package lsp-lua
-    :after lsp
+    :after lsp-mode
     :init (provide 'lsp-lua)
     :config
     (lsp-register-client
