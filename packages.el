@@ -44,7 +44,11 @@
 
          ("M-o" . other-frame)
 
-         ("M-#" . quick-calc))
+         ("M-#" . quick-calc)
+
+         ("C-q" . pop-to-mark-command)
+
+         ("C-z" . quoted-insert))
   :bind (:map occur-mode-map
               ("n" . occur-next)
               ("p" . occur-prev))
@@ -89,6 +93,9 @@
   (global-subword-mode)
   ;;(semantic-mode)
 
+  ;; Calc
+  (setq-default calc-multiplication-has-precedence nil)
+
   ;; Keys
   (global-unset-key "") ;; ESC ESC ESC
   (when (window-system) ;; GUI only keybindings:
@@ -102,7 +109,8 @@
 
   ;; Registers
   (set-register ?e '(file . "~/.emacs.d/init.el"))
-  (set-register ?t '(file . "/ssh:turin:/mnt/e1491766-f6aa-4a0d-a14d-a3581f898b47/drg/"))
+  (set-register ?t '(file . "/ssh:turin:/mnt/e1491766-f6aa-4a0d-a14d-a3581f898b47/"))
+  (set-register ?k '(file . "/ssh:turin2:/mnt/HD1/unimed-prj-covid19"))
   (set-register ?E `(file . ,dotemacs-file))
   (set-register ?p `(file . ,(concat dotemacs-dir "packages.el"))))
 
@@ -163,7 +171,7 @@
 (use-package recentf
   :ensure nil
   :config
-  (setq-default recentf-save-file       "~/.emacs.d/.cache/recent-files"
+  (setq-default recentf-save-file       "~/.cache/emacs/recent-files"
                 recentf-max-saved-items 50
                 recentf-max-menu-items  15))
 
@@ -224,6 +232,7 @@
                                          "\\`magit-.*:"
                                          "\\`\\*tramp"
                                          "\\`\\*emacs\\*"
+                                         "\\`\\*Org Preview LaTeX Output\\*"
                                          "\\`\\*ein:jupyter-server\\*"
                                          "\\`\\*ein:log-all\\*"
                                          "\\`\\*ein:.*\\*\\[markdown\\]"
@@ -280,7 +289,8 @@
   :hook (prog-mode . flycheck-mode)
   :config
   ; For some reason, the following does not work with setq, only with setq-default.
-  (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc)))
+  (setq-default flycheck-disabled-checkers '(emacs-lisp-checkdoc))
+  (setq-default flycheck-checker-error-threshold 1000))
 
 
 ;; Lsp -----------------------------------------------------------------------------------
@@ -307,7 +317,8 @@
     :config
     (setq lsp-ui-sideline-ignore-duplicate t
           lsp-ui-peek-always-show t
-          lsp-ui-doc-enable nil))
+          lsp-ui-doc-enable nil)
+    (lsp-ui-sideline-toggle-symbols-info))
 
   (use-package company-lsp
     :ensure t
@@ -356,7 +367,8 @@
          ("M->" . vterm--self-insert)
          ("C-c C-j" . vterm-copy-mode)
          :map vterm-copy-mode-map
-         ("C-c C-j" . vterm-copy-mode))
+         ("C-c C-j" . vterm-copy-mode)
+         ("<return>" . vterm-copy-mode))
   ;; :init
   ;; (advice-add 'multi-term :after #'term-line-mode) ; start in line mode
   :config
@@ -457,6 +469,9 @@
         org-src-window-setup 'current-window
 
         org-highlight-latex-and-related '(latex script entities)
+        org-latex-preview-ltxpng-directory "/tmp/ltximg/"
+        org-startup-with-latex-preview t
+        org-format-latex-options (plist-put org-format-latex-options :scale 0.35)
 
         ;; Inline images:
         org-display-inline-images t
@@ -494,6 +509,15 @@
   (put 'org-latex-toc-command 'safe-local-variable (lambda (_) t))
   (put 'org-after-todo-state-change-hook 'safe-local-variable (lambda (_) t))
 
+  (defun org-custom-timestamp (trans back _comm)
+    "Remove <> around time-stamps."
+    (pcase back
+      (`html
+       (replace-regexp-in-string "&[lg]t;" "" trans))
+      (_ ;; `latex or nil
+       (replace-regexp-in-string "[<>]" "" trans))))
+  (add-to-list 'org-export-filter-timestamp-functions #'org-custom-timestamp)
+
   (defun org-prop (prop)
     (org-entry-get (point) prop t))
 
@@ -513,7 +537,8 @@
   (defun org-refile-todo ()
     "Move current subtree to the corresponding todo heading"
     (interactive)
-    (when (eq (org-current-level) 2)
+    (when (and (eq (org-current-level) 2)
+               (not (member "pin" (org-get-tags))))
       (org-refile-to (org-get-todo-state))))
 
   (defun org-done-after (date)
@@ -548,7 +573,9 @@
                '("letter" "\\documentclass{letter}"
                  ("\\section{%s}" . "\\section*{%s}")
                  ("\\subsection{%s}" . "\\subsection*{%s}")
-                 ("\\subsubsection{%s}" . "\\subsubsection*{%s}"))))
+                 ("\\subsubsection{%s}" . "\\subsubsection*{%s}")))
+  (setq org-latex-active-timestamp-format "{%s}"
+        org-latex-inactive-timestamp-format "{%s}"))
 
 (package-feature 'feature-org-reveal
   (use-package org-re-reveal
@@ -572,6 +599,56 @@
   (use-package org-special-block-extras
     :ensure t
     :hook (org-mode . org-special-block-extras-mode)))
+
+
+(package-feature 'feature-org-presentation
+  (use-package olivetti
+    :ensure t
+    :defer t
+    :diminish
+    :config
+    (setq olivetti-body-width 0.7
+          olivetti-minimum-body-width 80
+          olivetti-recall-visual-line-mode-entry-state t))
+
+  (use-package org-tree-slide
+    :ensure t
+    :after org
+    :bind (:map org-tree-slide-mode-map
+                ("<down>" . org-tree-slide-display-header-toggle)
+                ("<right>" . org-tree-slide-move-next-tree)
+                ("<left>" . org-tree-slide-move-previous-tree))
+    :config
+    (setq org-tree-slide-breadcrumbs nil
+          org-tree-slide-header nil
+          org-tree-slide-slide-in-effect nil
+          org-tree-slide-heading-emphasis nil
+          org-tree-slide-cursor-init t
+          org-tree-slide-modeline-display nil
+          org-tree-slide-skip-done nil
+          org-tree-slide-skip-comments t
+          org-tree-slide-fold-subtrees-skipped t
+          org-tree-slide-skip-outline-level 8
+          org-tree-slide-never-touch-face t
+          org-tree-slide-activate-message (propertize "Presentation mode ON" 'face 'success)
+          org-tree-slide-deactivate-message (propertize "Presentation mode OFF" 'face 'error)))
+
+  (use-package org-presentation
+    :ensure nil
+    :bind ("C-c p" . org-presentation-mode))
+    :init
+    (define-minor-mode org-presentation-mode
+      "Parameters for plain text presentations with `org-mode'."
+      :init-value nil
+      :global nil
+      (if org-presentation-mode
+          (progn
+            (unless (eq major-mode 'org-mode)
+              (user-error "Not in an Org buffer"))
+            (org-tree-slide-mode)
+            (olivetti-mode))
+        (org-tree-slide-mode -1)
+        (olivetti-mode -1))))
 
 
 ;; Docview -------------------------------------------------------------------------------
@@ -630,7 +707,18 @@
     :defer  t
     :mode "\\.js\\'"
     :hook (js2-mode . lsp)
-    :config (setq js-indent-level indent-size)))
+    :config (setq js-indent-level indent-size))
+
+  (use-package lsp-tramp-tsls
+    :ensure nil
+    :after lsp-mode
+    :init (provide 'lsp-tramp-tsls)
+    :config
+    (lsp-register-client
+     (make-lsp-client :new-connection (lsp-tramp-connection '("typescript-language-server" "--stdio"))
+                      :major-modes '(js-mode js2-mode typescript-mode)
+                      :remote? t
+                      :server-id 'lsp-tramp-tsls))))
 
 
 ;; Java ----------------------------------------------------------------------------------
@@ -662,9 +750,8 @@
     (setq-default org-babel-python-command "python3")
 
     (defun python-indent-setup ()
-      (indent-tabs-mode)
-      (set-indent-size indent-size nil)
-      (setq-local py-indent-tabs-mode t))
+      (indent-spaces-mode)
+      (set-indent-size indent-size nil))
 
     (setq python-indent-offset indent-size
           python-guess-indent nil))
@@ -890,6 +977,7 @@
     :ensure t
     :defer t
     :mode "\\.ledger\\'"
+    :hook (ledger-mode . indent-spaces-mode)
     :bind (:map ledger-mode-map
                 ("C-c a" . ledger-add-transaction)
                 ("C-c r" . ledger-report)
@@ -926,25 +1014,14 @@
 
 
 ;; Helm-Spotify-plus----------------------------------------------------------------------
-(package-feature 'spotify
-  (use-package helm-spotify-plus
-    :ensure t
-    :bind
-    (("C-c s s" . 'helm-spotify-plus)  ;; s for SEARCH
-     ("C-c s f" . 'helm-spotify-plus-next)
-     ("C-c s b" . 'helm-spotify-plus-previous)
-     ("C-c s p" . 'helm-spotify-plus-play)
-     ("C-c s g" . 'helm-spotify-plus-pause))))
-
-
-;; webpaste-------------------------------------------------------------------------------
-(use-package webpaste
+(use-package helm-spotify-plus
   :ensure t
-  :bind (("C-c C-p C-b" . webpaste-paste-buffer)
-         ("C-c C-p C-r" . webpaste-paste-region))
-  :config
-  (progn
-    (setq webpaste-provider-priority '("ptpb.pw" "dpaste.de"))))
+  :bind
+  (("C-c s s" . 'helm-spotify-plus)  ;; s for SEARCH
+   ("C-c s f" . 'helm-spotify-plus-next)
+   ("C-c s b" . 'helm-spotify-plus-previous)
+   ("C-c s p" . 'helm-spotify-plus-play)
+   ("C-c s g" . 'helm-spotify-plus-pause)))
 
 
 ;; ---------------------------------------------------------------------------------------

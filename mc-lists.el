@@ -54,6 +54,7 @@
         org-return-indent
         org-self-insert-command
         org-todo
+        org-transpose-element
         org-transpose-words
         org-yank
         pcomplete
@@ -101,6 +102,7 @@
         other-frame
         repeat
         revert-buffer
+        suspend-frame
         wdired-finish-edit
         write-file
         xref-find-definitions
